@@ -35,3 +35,4 @@ tree = o3d.geometry.KDTreeFlann(pcd_down)
 query_point = np.asarray(pcd_down.points)[0]  # 把第一个点拎出来当“队长”
 [k, idx, dist2] = tree.search_knn_vector_3d(query_point, 10)
 o3d.visualization.draw_geometries([pcd_down], window_name="Open3D 点云示例")
+print(idx, dist2)
