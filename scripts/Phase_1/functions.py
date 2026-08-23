@@ -2,7 +2,6 @@
 
 # transform_points()
 # exp_map()
-# rotation_matrix_to_axis_angle()
 
 # read_kitti_bin()
 # read_velodyne_dir()
@@ -47,22 +46,6 @@ def exp_map(xi):
     T[:3, 3]  = t       # 右上放平移
     return T
 
-def rotation_matrix_to_axis_angle(R):
-    """3x3 旋转矩阵 -> 旋转向量（轴角）。
-
-    公式: theta = arccos((trace(R) - 1) / 2), 轴 = (R - R^T) 的反对称部分 / (2 sin(theta))
-    """
-    theta = np.arccos(np.clip((np.trace(R) - 1.0) / 2.0, -1.0, 1.0))
-    if theta < 1e-8:
-        return np.zeros(3)
-    v = np.array([
-        R[2, 1] - R[1, 2],
-        R[0, 2] - R[2, 0],
-        R[1, 0] - R[0, 1],
-    ])
-    axis = v / (2.0 * np.sin(theta))
-    return axis * theta
-
 def read_kitti_bin(file_path):
     import os
     if not os.path.exists(file_path):
@@ -76,13 +59,6 @@ def read_kitti_bin(file_path):
     points = points_with_intensity[:, :3]
     return points
 
-def read_velodyne_dir(dir_path):
-    from pathlib import Path
-    bin_names = []
-    # 只匹配 *.bin
-    for file_path in dir_path.glob("*.bin"):
-        bin_names.append(file_path.name)
-    return bin_names
 
 def to_pcd(points: np.ndarray, color:list | None = None):
     point_cloud = o3d.geometry.PointCloud()
@@ -105,3 +81,4 @@ def voxel_down_sample(pts: np.ndarray, voxel_size: float, return_voxel: bool = F
     if not return_voxel:
         return sample
     return sample, unique_voxel
+        

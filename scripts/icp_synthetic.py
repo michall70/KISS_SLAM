@@ -4,9 +4,9 @@ import os
 import matplotlib.pyplot as plt
 from functions import transform_points, exp_map, read_kitti_bin, to_pcd
 
-def ICP(target_pts: np.ndarray, source_pts: np.ndarray, epoch: int, return_cost_line: bool = False):
+def Kiss_ICP(target_pts: np.ndarray, source_pts: np.ndarray, max_epoch: int, threshold: float, return_cost_line: bool = False):
     '''
-    epoch: iterate number
+    max_epoch: max iterate number
     '''
     target_pcd = to_pcd(target_pts)
     # initialize ------------------------
@@ -20,9 +20,9 @@ def ICP(target_pts: np.ndarray, source_pts: np.ndarray, epoch: int, return_cost_
 
     # process ----------------------------
     if return_cost_line:
-        total_cost = [0] * epoch
+        total_cost = [0] * max_epoch
 
-    for round in range(epoch):
+    for round in range(max_epoch):
         p_prime_pts = transform_points(source_pts, T)
         H = np.zeros((6, 6))
         g = np.zeros((6, 1))
@@ -88,7 +88,7 @@ def main():
     # return
 
     epoch = 10
-    T, total_cost = ICP(target_pts, source_pts, epoch, return_cost_line=True)
+    T, total_cost = Kiss_ICP(target_pts, source_pts, epoch, 0.5, return_cost_line=True)
 
     # output ------------------------
     print(np.array2string(T, precision=3, suppress_small=True))

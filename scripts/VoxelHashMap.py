@@ -1,7 +1,8 @@
 import numpy as np
+from print_log import print_log
 
 class VoxelHashMap:
-    def __init__(self, voxel_size: float, max_distance: float):
+    def __init__(self, voxel_size: float, max_distance: float | None = None):
         self.voxel_size = voxel_size
         self.max_distance = max_distance
         self.internal_map = {}
@@ -24,11 +25,13 @@ class VoxelHashMap:
         for voxel in list(self.internal_map.keys()):    ## 必须转为 list，否则遍历时修改字典会报错
             t = np.array(self.internal_map[voxel]) - origin
             distance = np.linalg.norm(t)
-            if distance > self.max_distance:
-                del self.internal_map[voxel]
+            if self.max_distance is not None:
+                if distance > self.max_distance:
+                    del self.internal_map[voxel]
 
     def to_points(self):
         if not self.internal_map:
+            print_log("warn", "internal_map has 0 points")
             return np.empty((0, 3), dtype=np.float64)
         return np.array(tuple(self.internal_map.values()), dtype=np.float64)
 
@@ -61,6 +64,7 @@ if __name__ == "__main__":
 
     bin_file = "/media/michall/学习资料/Michall/datasets/2011_09_26/2011_09_26_drive_0005_sync/velodyne_points/data/0000000000.bin"
     pts = read_kitti_bin(bin_file)
+    coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1.0, origin=[0, 0, 0])
     # print(np.shape(pts))
     for x in range(0, 50, 5):
         t = [x, 0, 0]
@@ -74,5 +78,5 @@ if __name__ == "__main__":
         map_pts = map.to_points()
         print(f"x = {x}, pts:{np.shape(map_pts)}")
         pcd = map.to_pointcloud()
-        o3d.visualization.draw_geometries([pcd], window_name="Open3D")
+        o3d.visualization.draw_geometries([pcd, coordinate_frame], window_name="Open3D")
 
