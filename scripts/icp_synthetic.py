@@ -4,7 +4,7 @@ import os
 import matplotlib.pyplot as plt
 from functions import transform_points, exp_map, read_kitti_bin, to_pcd
 
-def Kiss_ICP(target_pts: np.ndarray, source_pts: np.ndarray, max_epoch: int, threshold: float, return_cost_line: bool = False):
+def Kiss_ICP(target_pts: np.ndarray, source_pts: np.ndarray, initial_guess: np.ndarray = np.eye(4), max_epoch: int = 10, threshold: float = 0.5, return_cost_line: bool = False):
     '''
     max_epoch: max iterate number
     '''
@@ -15,7 +15,7 @@ def Kiss_ICP(target_pts: np.ndarray, source_pts: np.ndarray, max_epoch: int, thr
     )
     target_normals = np.asarray(target_pcd.normals)
     tree = o3d.geometry.KDTreeFlann(target_pcd)
-    T = np.eye(4)
+    T = initial_guess
     N = np.shape(source_pts)[0]
 
     # process ----------------------------
@@ -87,7 +87,7 @@ def main():
     # o3d.visualization.draw_geometries([target_pcd, source_pcd], window_name="Open3D")
     # return
 
-    epoch = 10
+    epoch = 20
     T, total_cost = Kiss_ICP(target_pts, source_pts, epoch, 0.5, return_cost_line=True)
 
     # output ------------------------

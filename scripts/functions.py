@@ -9,6 +9,7 @@
 
 # to_pcd()
 # voxel_down_sample()
+# create_grid_ground()
 
 import numpy as np
 import open3d as o3d
@@ -105,3 +106,52 @@ def voxel_down_sample(pts: np.ndarray, voxel_size: float, return_voxel: bool = F
     if not return_voxel:
         return sample
     return sample, unique_voxel
+
+def create_grid_ground(size=10.0, step=1.0, center=[0, 0, 0]):
+    """
+    创建一个网格地面（LineSet）
+    :param size:  网格的总边长（米），从 -size/2 到 size/2
+    :param step:  网格间距（米）
+    :param center: 网格中心位置 [x, y, z]
+    :return:       LineSet 对象
+    """
+    half = size / 2.0
+    x0, y0, z0 = center
+
+    # 收集所有线段的端点
+    points = []
+    lines = []
+
+    # 生成 X 方向的平行线（沿 Y 方向延伸）
+    x_vals = np.arange(-half, half + step, step)
+    for x in x_vals:
+        # 每个 x 处画一条从 (x, -half, 0) 到 (x, half, 0) 的线段
+        p1 = [x0 + x, y0 - half, z0]
+        p2 = [x0 + x, y0 + half, z0]
+        idx1 = len(points)
+        points.append(p1)
+        idx2 = len(points)
+        points.append(p2)
+        lines.append([idx1, idx2])
+
+    # 生成 Y 方向的平行线（沿 X 方向延伸）
+    y_vals = np.arange(-half, half + step, step)
+    for y in y_vals:
+        p1 = [x0 - half, y0 + y, z0]
+        p2 = [x0 + half, y0 + y, z0]
+        idx1 = len(points)
+        points.append(p1)
+        idx2 = len(points)
+        points.append(p2)
+        lines.append([idx1, idx2])
+
+    # 创建 LineSet
+    line_set = o3d.geometry.LineSet()
+    line_set.points = o3d.utility.Vector3dVector(np.array(points))
+    line_set.lines = o3d.utility.Vector2iVector(np.array(lines))
+    
+    # 可选：设置网格线的颜色（灰色）
+    line_set.paint_uniform_color([0.7, 0.7, 0.7])  # 浅灰色
+
+    return line_set
+
