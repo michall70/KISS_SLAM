@@ -1,13 +1,13 @@
 # KISS-SLAM 手搓版配置文件（分类风格对齐官方 kiss-icp config.yml）
 data:
-  max_range: 10.0        # 裁剪: 超过此距离的点丢弃
+  max_range: 100.0        # 裁剪: 超过此距离的点丢弃
   min_range: 0.0          # 裁剪: 低于此距离的点丢弃
-  deskew: false            # 是否做运动补偿(KITTI无逐点时间戳则跳过)
-  data_dir: /media/michall/学习资料/Michall/datasets/2D_to_depth/seq0/pointcloud
-  timestamps_start_file: null
-  timestamps_end_file: null
-  max_files: null           # 最多处理帧数(null=全部)
-  skip_rate: 2            # 抽帧: 每 skip_rate 帧取 1 帧
+  deskew: true            # 是否做运动补偿(KITTI无逐点时间戳则跳过)
+  data_dir: 
+  timestamps_start_file: 
+  timestamps_end_file: 
+  max_files: 50           # 最多处理帧数(null=全部)
+  skip_rate: 3            # 抽帧: 每 skip_rate 帧取 1 帧
 
 mapping:
   voxel_size: 0.1         # 体素大小(米)

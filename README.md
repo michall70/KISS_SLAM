@@ -25,25 +25,26 @@ conda activate pyslam
 
 ```bash
 cd scripts
-python run_odometry.py
+python AAAmain.py
 ```
 
-运行后会**列出可用的配置文件**并询问文件名，输入配置名（如 `kitti_config.yaml`）即可运行。程序会先快速出 prompt，再加载 open3d（import 约 3.7s，属正常）。
+运行后询问配置文件文件名，**直接回车用默认 `config.yaml`**（或输入其他配置名）。程序会先快速出 prompt，再加载 open3d（import 约 3.7s，属正常）。
 
 ### 配置文件
 
 配置文件按官方 kiss-icp 风格分类：`data`（裁剪/路径/抽帧）、`mapping`（体素/局部地图半径）、`registration`（ICP 迭代数）、`adaptive_threshold`（自适应阈值）。
 
-现有配置：
-- `kitti_config.yaml` — KITTI 数据
-- `mydata_config.yaml` — npy 数据
+- `scripts/config.yaml` — **默认配置**（scripts 下保留，直接回车即可使用）
+- `config/` — 含真实数据路径的配置（`kitti_config.yaml`、`mydata_config.yaml`），**已 gitignore 保护隐私**，不提交到 git
 
-换数据集时新建一个 yaml、改 `data_dir` 等参数即可，运行时选它，不用改代码。
+换数据集时新建一个 yaml、改 `data_dir` 等参数即可，运行时输入配置文件名（或直接回车用默认），不用改代码。
 
 ## 数据
 
-- **KITTI raw**（154 帧 `.bin`）：`/media/michall/学习资料/Michall/datasets/2011_09_26/2011_09_26_drive_0005_sync/velodyne_points/data`，配套 `timestamps_start.txt` / `timestamps_end.txt`。
-- **npy 数据**（`(N,3)` 数组）：`/media/michall/学习资料/Michall/datasets/2D_to_depth/seq0/pointcloud`。
+数据路径统一写在配置文件里（`config/` 目录，已 gitignore 保护隐私），不在 README 公开。
+
+- **KITTI raw**：`.bin` 格式（每点 4×float32 `x,y,z,intensity`），配套 `timestamps_start.txt` / `timestamps_end.txt`。
+- **npy 数据**：`(N,3)` 二维数组。
 
 `read_point_cloud` 会自动按扩展名读 `.bin` / `.npy`。
 
@@ -51,7 +52,7 @@ python run_odometry.py
 
 | 文件 | 功能 |
 |---|---|
-| `run_odometry.py` | 运行入口（先询问配置，再加载 open3d） |
+| `AAAmain.py` | 运行入口（先询问配置，再加载 open3d） |
 | `odometry.py` | `Odemetry` 类，`register_frame` 组装完整里程计 |
 | `functions.py` | 公共函数库：变换、exp_map、读点云、体素下采样等 |
 | `icp_synthetic.py` | 向量化 point-to-plane ICP（scipy cKDTree + 鲁棒核） |
@@ -66,7 +67,9 @@ python run_odometry.py
 ```
 KISS_SLAM/
 ├── scripts/            # 手搓代码
-│   ├── run_odometry.py # 运行入口
+│   ├── AAAmain.py      # 运行入口
+│   ├── config.yaml     # 默认配置
+│   ├── config_loader.py# 配置加载
 │   ├── odometry.py     # 里程计类
 │   ├── *.yaml          # 配置文件
 │   └── ...             # 各组件模块
