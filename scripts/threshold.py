@@ -5,7 +5,7 @@ class AdaptiveThreshold:
                  max_range: float = 100.0, 
                  alpha: float = 0.4, 
                  min_motion_th: float = 0.05, 
-                 initial_threshold: float = 0.5):
+                 initial_threshold: float = 0.8):
         """
         KISS-ICP 风格的自适应阈值计算器
 
@@ -18,6 +18,7 @@ class AdaptiveThreshold:
         self.alpha = alpha
         self.min_motion_th = min_motion_th
         self.threshold = initial_threshold  # 当前存储的平滑阈值
+        self.is_first_frame = True
 
     def _rotation_matrix_to_angle(self, R: np.ndarray) -> float:
         """从 3x3 旋转矩阵提取旋转角度（弧度），范围 [0, pi]"""
@@ -33,6 +34,10 @@ class AdaptiveThreshold:
         :param model_deviation: 4x4 齐次矩阵，表示 inv(prediction) @ actual_pose
         :return: 当前帧的自适应阈值（米），保证 >= min_motion_th
         """
+        if self.is_first_frame: # don't update when it comes to first frame
+            self.is_first_frame = False
+            return self.threshold
+        
         # 1. 提取旋转和平移分量
         R = model_deviation[:3, :3]
         t = model_deviation[:3, 3]

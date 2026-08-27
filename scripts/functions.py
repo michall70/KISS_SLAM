@@ -1,15 +1,18 @@
-# 存放常用function
+"""
+functions.py - KISS-SLAM 手搓版公共函数库
 
-# transform_points()
-# exp_map()
-# rotation_matrix_to_axis_angle()
-
-# read_kitti_bin()
-# read_velodyne_dir()
-
-# to_pcd()
-# voxel_down_sample()
-# create_grid_ground()
+包含的函数及功能:
+- transform_points(pts, T)          : 用 4x4 变换 T 变换点云(行向量约定 pts @ R.T + t)
+- exp_map(xi)                       : se(3) 李代数(6维) -> 4x4 变换矩阵(罗德里格斯公式)
+- rotation_matrix_to_axis_angle(R)  : 3x3 旋转矩阵 -> 旋转向量(轴角)
+- read_kitti_bin(file_path)         : 读 KITTI .bin 点云(每点4个float32: x,y,z,intensity)
+- read_npy(file_path)               : 读 npy 点云, 要求形状 (N,3) 二维数组
+- read_point_cloud(file_path)       : 根据扩展名自动判断 .bin / .npy 并读取
+- to_pcd(points, color)             : numpy 点云 -> open3d PointCloud(可选上色)
+- voxel_down_sample(pts, voxel_size, return_voxel): 体素下采样(每体素保留第一个点)
+- create_grid_ground(size, step, center): 创建可视化用的网格地面(LineSet)
+"""
+from pathlib import Path
 
 import numpy as np
 import open3d as o3d
@@ -77,13 +80,32 @@ def read_kitti_bin(file_path):
     points = points_with_intensity[:, :3]
     return points
 
-def read_velodyne_dir(dir_path):
-    from pathlib import Path
-    bin_names = []
-    # 只匹配 *.bin
-    for file_path in dir_path.glob("*.bin"):
-        bin_names.append(file_path.name)
-    return bin_names
+def read_npy(file_path):
+    """读 npy 点云文件, 要求形状为 (N, 3) 二维数组。
+
+    :param file_path: .npy 文件路径
+    :return: (N, 3) float64 数组
+    """
+    points = np.load(file_path)
+    if points.ndim != 2 or points.shape[1] != 3:
+        raise ValueError(f"npy 点云文件应为 (N,3) 二维数组, 实际形状 {points.shape}")
+    return points.astype(np.float64)
+
+
+def read_point_cloud(file_path):
+    """根据扩展名自动判断点云格式并读取。
+
+    - .bin: KITTI 格式(每点4个float32: x,y,z,intensity)
+    - .npy: (N,3) 二维数组
+    """
+    suffix = Path(file_path).suffix.lower()
+    if suffix == ".bin":
+        return read_kitti_bin(file_path)
+    if suffix == ".npy":
+        return read_npy(file_path)
+    raise ValueError(f"不支持的点云格式: {suffix}, 仅支持 .bin / .npy")
+
+
 
 def to_pcd(points: np.ndarray, color:list | None = None):
     point_cloud = o3d.geometry.PointCloud()

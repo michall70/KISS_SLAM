@@ -101,7 +101,7 @@ if __name__ == "__main__":
     pts = read_kitti_bin(bin_file)
 
     # 构造每点时间戳
-    timestamps = get_timestamps(ts_start_file, ts_end_file, pts)
+    timestamps = get_timestamps(ts_start_file, ts_end_file, pts, line_index=0)
 
     # 演示用相对运动(第一帧没有真实 last_delta): 车前进 0.5m + 绕 z 微转 0.02 弧度
     relative_motion = exp_map([0.5, 0, 0, 0, 0, 0.02])

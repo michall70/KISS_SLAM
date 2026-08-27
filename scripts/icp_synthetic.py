@@ -2,55 +2,90 @@ import numpy as np
 import open3d as o3d
 import os
 import matplotlib.pyplot as plt
+from scipy.spatial import cKDTree
 from functions import transform_points, exp_map, read_kitti_bin, to_pcd
 
-def Kiss_ICP(target_pts: np.ndarray, source_pts: np.ndarray, initial_guess: np.ndarray = np.eye(4), max_epoch: int = 10, threshold: float = 0.5, return_cost_line: bool = False):
+def Kiss_ICP(target_pts: np.ndarray, source_pts: np.ndarray, initial_guess: np.ndarray = np.eye(4), max_epoch: int = 10, threshold: float = 0.5, kernel: float | None = None, return_cost_line: bool = False):
     '''
-    max_epoch: max iterate number
+    target_pts: 地图点云(世界坐标)
+    source_pts: 待配准点云(车体系)
+    initial_guess: 初始位姿(恒定速度预测)
+    threshold: 对应点距离门槛(3*sigma), 超过的丢弃
+    kernel: 鲁棒核尺度(sigma), None 表示不加核
+    返回: 配准后的位姿 T (以及可选 cost 曲线)
     '''
     target_pcd = to_pcd(target_pts)
-    # initialize ------------------------
     target_pcd.estimate_normals(
-        search_param = o3d.geometry.KDTreeSearchParamHybrid(radius = 0.2, max_nn = 30)
+        search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.2, max_nn=30)
     )
     target_normals = np.asarray(target_pcd.normals)
-    tree = o3d.geometry.KDTreeFlann(target_pcd)
-    T = initial_guess
-    N = np.shape(source_pts)[0]
 
-    # process ----------------------------
+    # scipy cKDTree: 批量查询, 比逐点调用 open3d KDTree 快 1~2 个数量级
+    tree = cKDTree(target_pts)
+
+    T = initial_guess
+    best_T = T
+    best_cost = -1
     if return_cost_line:
         total_cost = [0] * max_epoch
 
     for round in range(max_epoch):
         p_prime_pts = transform_points(source_pts, T)
-        H = np.zeros((6, 6))
-        g = np.zeros((6, 1))
 
-        for i in range(N):
-            p_prime = p_prime_pts[i]
-            [_, idx, _] = tree.search_knn_vector_3d(p_prime, 1)
-            q = target_pts[idx[0]]
-            n = target_normals[idx[0]]
-            r = np.dot(p_prime - q, n)
-            if return_cost_line:
-                total_cost[round] += np.square(r)
-            cross = np.cross(p_prime, n)
-            J = np.concatenate([n, cross])
+        # 批量找最近邻: dist 是每个源点到最近邻的距离, idx 是索引
+        dist, idx = tree.query(p_prime_pts, k=1)
 
-            H += np.outer(J, J)
-            g += J.reshape(6, 1) * r
+        q = target_pts[idx]
+        n = target_normals[idx]
 
-        # 给 H 加小量正则化，防止奇异
+        # 对应点距离门槛: 超过 threshold 的点对丢弃
+        valid = dist < threshold
+        if valid.sum() < 10:
+            break
+
+        # 残差 (向量化): r = (p' - q)·n
+        r = np.sum((p_prime_pts - q) * n, axis=1)
+
+        # 雅可比 (向量化): J = [n, p' x n], (N,6)
+        cross = np.cross(p_prime_pts, n)
+        J = np.concatenate([n, cross], axis=1)
+
+        # 鲁棒核权重 (保留原逻辑: 对应点距离 > kernel 用 Geman-McClure, 否则 w=2)
+        if kernel is not None and kernel > 0:
+            sigma2 = kernel * kernel
+            kernel_mask = valid & (dist > kernel)
+            w = np.where(kernel_mask, 2.0 * (sigma2 / (sigma2 + r * r)) ** 2, 2.0)
+        else:
+            w = np.full_like(r, 2.0)
+
+        # 应用门槛: 无效点对权重置 0
+        w = w * valid
+
+        # 正规方程 (向量化): H = Σ w_i J_i J_i^T, g = Σ w_i J_i r_i
+        H = (w[:, None] * J).T @ J   # (6,6)
+        g = (w * r) @ J               # (6,)
+
         H_reg = H + 1e-6 * np.eye(6)
         delta_xi = np.linalg.solve(H_reg, -g).flatten()
         T = exp_map(delta_xi) @ T
 
-    # output ------------------------
+        # cost
+        cost = 0.5 * float(np.sum(w * (r ** 2)))
+        if best_cost == -1:
+            best_cost = cost
+            best_T = T
+        elif cost < best_cost:
+            best_cost = cost
+            best_T = T
+
+        if return_cost_line:
+            total_cost[round] = cost
+
     if return_cost_line:
-        return T, total_cost
+        print("best_cost = ", best_cost)
+        return best_T, total_cost
     else:
-        return T
+        return best_T
 
 def main():
     # # generate target and source ---------------------
@@ -88,7 +123,7 @@ def main():
     # return
 
     epoch = 20
-    T, total_cost = Kiss_ICP(target_pts, source_pts, epoch, 0.5, return_cost_line=True)
+    T, total_cost = Kiss_ICP(target_pts, source_pts, max_epoch=epoch, threshold=1.5, return_cost_line=True)
 
     # output ------------------------
     print(np.array2string(T, precision=3, suppress_small=True))
